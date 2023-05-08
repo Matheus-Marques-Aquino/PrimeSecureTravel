@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            .row {
+                width: 100%;
+                max-width: 1100px;
+            }
+            .column {
+                width: 100%;
+                max-width: 300px;
+            }
+        </style>
+    </head>
+    <body>
+        <div style="width:100%; display:flex;">
+            <div id="tabela" style="margin: 0 auto;"></div>
+        </div>
+        <script>
+            async function apiRequest(){
+                try {
+                    const response = await fetch("/cotacao", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({})
+                    });
+                    if (response.ok) {
+                        let data = await response.json();
+                        gerarTabela(data);
+                    }else{
+                        if (response.status == 400){
+                            let data = await response.json();
+                            console.error(data);
+                        }
+                        console.error("Error");
+                    }
+                } catch (error) {
+                    console.error("Internal Error");
+                }
+            }
+            function gerarTabela(data){
+                let groups = [];
+                data.map((item, index)=>{
+                    if (item.coverages){
+                        item.coverages.sort((a, b)=>{
+                            if (a.coverage.display_order > b.coverage.display_order){ return 1; }
+                            if (a.coverage.display_order < b.coverage.display_order){ return -1; }
+                            return 0;
+                        }); 
+                    }
+                    if (!groups[item.group]){ groups[item.group] = []; }
+                    groups[item.group].push(item);
+                });
+                console.log(groups);
+                groups.map((group, index)=>{
+                    
+                });
+            }
+            apiRequest();
+        </script>
+    </body>
