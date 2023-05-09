@@ -16,9 +16,28 @@
     </head>
     <body>
         <div style="width:100%; display:flex;">
-            <div id="tabela" style="margin: 0 auto;"></div>
+            <div id="tabela" style="max-width: 1000px; width: 100%; margin: 0 auto;">
+                <div id="row" style="width: 100%; display: flex; height: 60px;">
+                    <div id="descricao" style="width: 100%; height: 100%; max-width: 200px; display: flex;">
+                        <span style="margin: auto;">Descrição</span>
+                    </div>
+                    <div id="dados" style="width: 100%; height: 100%; max-width: 800px; display: flex;">
+                        <div id="plano-a" style="width: 33%; height: 100%; text-align: center; display: flex;">
+                            <span style="margin: auto;">Plano A</span>
+                        </div>
+                        <div id="plano-b" style="width: 33%; height: 100%; margin: 0 auto; text-align: center; display: flex;">
+                            <span style="margin: auto;">Plano B</span>
+                        </div>
+                        <div id="plano-c" style="width: 33%; height: 100%; text-align: center; display: flex;">
+                            <span style="margin: auto;">Plano C</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         <script>
+            //var listaCobertura = [];
+            //var columns = [];
             async function apiRequest(){
                 try {
                     const response = await fetch("/cotacao", {
@@ -28,7 +47,7 @@
                     });
                     if (response.ok) {
                         let data = await response.json();
-                        gerarTabela(data);
+                        processarDados(data);
                     }else{
                         if (response.status == 400){
                             let data = await response.json();
@@ -37,26 +56,220 @@
                         console.error("Error");
                     }
                 } catch (error) {
-                    console.error("Internal Error");
+                    console.error(error);
                 }
             }
-            function gerarTabela(data){
-                let groups = [];
+            function processarDados(data){
+                let groupos = [];
+                let rows = 0;
+                let maxRows = 0;
+                let minRows = 0;
+                let listaCobertura = [];
+                let colunas = [];
+                let listaAddionalIds = [];
+                let listaPlanIds = [];
+                
                 data.map((item, index)=>{
-                    if (item.coverages){
-                        item.coverages.sort((a, b)=>{
-                            if (a.coverage.display_order > b.coverage.display_order){ return 1; }
-                            if (a.coverage.display_order < b.coverage.display_order){ return -1; }
-                            return 0;
-                        }); 
+                    if (!groupos[item.group]){ groupos[item.group] = []; }
+                    groupos[item.group].push(item);
+                });
+
+                for(let i in groupos){
+                    let groupo = groupos[i];
+                    if (!groupo){ continue; }
+                    if (!Array.isArray(groupo)){ continue; }
+                    listaAddionalIds[i] = [];
+                    colunas.push(i);
+                    //console.log(groupos);
+                    for(let k in groupo){
+                        let subgrupo = groupo[k];
+                        let coverages = subgrupo.coverages
+                        //console.log(subgroupo)
+                        //console.log(coverages)
+                        if (!coverages){ continue; }
+                        if (!Array.isArray(coverages)){ continue; }
+
+                        if (maxRows < coverages.length){ maxRows = coverages.length; }
+                        if (minRows == 0){ minRows = coverages.length; }
+                        if (minRows > coverages.length){ minRows = coverages.length; }
+
+                        for(let j in coverages){
+                            let coverage = coverages[j];
+                            if (!coverage){ continue; }
+                            if (!coverage.coverage){ continue; }
+                            coverage._group = i;
+                            coverage._plan_id = subgrupo.plan_id || 0;
+                            coverage._additional_id = subgrupo.additional_id || 0;
+                            coverage._coverage_id = coverage.coverage.id || 0;
+                            if (!listaAddionalIds[i].includes(subgrupo.additional_id)){ listaAddionalIds[i].push(subgrupo.additional_id); }
+                            if (!listaPlanlIds[i].includes(subgrupo.plan_id)){ listaPlanlIds[i].push(subgrupo.plan_id); }
+                            listaCobertura.push(coverage);
+                        }
                     }
-                    if (!groups[item.group]){ groups[item.group] = []; }
-                    groups[item.group].push(item);
+                }
+                console.log(listaAddionalIds)
+                listaCobertura.sort((a, b)=>{
+                    if (a.coverage.display_order > b.coverage.display_order){ return 1; }
+                    if (a.coverage.display_order < b.coverage.display_order){ return -1; }
+                    return 0
                 });
-                console.log(groups);
-                groups.map((group, index)=>{
-                    
-                });
+
+                listaCobertura = listaCobertura.filter((value)=>{ 
+                    if (value._additional_id == 40){ return value; } 
+                }); // Controla o select
+
+                console.log(listaCobertura);
+                console.log('columns:', colunas);
+                console.log('maxRows:', maxRows);
+                console.log('minRows:', minRows);
+                gerarTabela(listaCobertura, colunas);
+            }
+            function gerarTabela(lista, colunas){
+                let numeroColunas = colunas.length;
+                let tabela = document.getElementById('tabela');
+                for(let k in lista){
+                    let item = lista[k];
+                    let slug = item.coverage.slug;
+                    let titulo = item.coverage.title;
+                    let moeda = item.coverage_type;
+                    let valor = item.is;
+
+                    if (!document.getElementById(`row-${slug}`)){
+                        let linha = document.createElement('div');
+                        linha.setAttribute('id', `row-${slug}`);
+                        linha.setAttribute('class', 'row');
+                        linha.setAttribute('style', 'width: 100%; display: flex; height: 60px;');
+
+                        let container = [];
+                        container[0] = document.createElement('div');
+                        container[0].setAttribute('id', `description-${slug}`);
+                        container[0].setAttribute('class', 'description-container');
+                        container[0].setAttribute('style', 'width: 100%; height: 100%; max-width: 200px; display: flex;');
+
+                        span = document.createElement('span');
+                        span.setAttribute('style', 'margin: auto;');
+                        span.innerHTML = titulo;
+
+                        container[0].appendChild(span);
+                        linha.appendChild(container[0]);
+
+                        container[1] = document.createElement('div');
+                        container[1].setAttribute('id', `container-${slug}`);
+                        container[1].setAttribute('class', 'plan-container');
+                        container[1].setAttribute('style', 'width: 100%; height: 100%; max-width: 800px; display: flex;');
+
+                        let coluna = [];
+                        span = [];
+                        for(let i in colunas){
+                            span[i] = document.createElement('span');
+                            span[i].setAttribute('style', 'margin: auto;');
+                            span[i].innerHTML = (moeda == 'INCLUSO') ? moeda : `${moeda} ${valor}`;
+
+                            coluna[i] = document.createElement('div');
+                            coluna[i].setAttribute('id', `column-${item._plan_id}-${item._additional_id}`);
+                            coluna[i].setAttribute('class', 'column');
+                            coluna[i].setAttribute('style', `width: ${100/numeroColunas}%; height: 100%; text-align: center; display: flex;`);
+
+                            coluna[i].appendChild(span[i]);
+                            container[1].appendChild(coluna[i])
+                        }
+                        linha.appendChild(container[1]);
+                        tabela.appendChild(linha);
+                    }
+                }
+
+                /*
+                
+                span[c + 1] = document.createElement('span');
+                    span[c + 1].setAttribute('style', 'margin: auto;');
+                    span[c + 1].innerHTML = 'Teste';
+
+                    coluna[c + 1] = document.createElement('div');
+                    coluna[c + 1].setAttribute('id', `coluna-${columns[c]}`);
+                    coluna[c + 1].setAttribute('class', 'coluna');
+                    coluna[c + 1].setAttribute('style', `width: ${100/numeroColunas}%; height: 100%; text-align: center; display: flex;`);
+                
+                let numeroColunas = columns.length;
+                let coluna = [];
+                let conteiner = [];
+                let span = [];
+
+                let table = document.getElementById('tabela');
+
+                let linha = document.createElement('div');
+                linha.setAttribute('id', 'row-A');
+                linha.setAttribute('class', 'row');
+                linha.setAttribute('style', 'width: 100%; display: flex; height: 60px;');
+
+                coluna[0] = document.createElement('div');
+                coluna[0].setAttribute('id', 'descricao');
+                coluna[0].setAttribute('class', 'sub-row');
+                coluna[0].setAttribute('style', 'width: 100%; height: 100%; max-width: 200px; display: flex;');
+
+                span[0] = document.createElement('span');
+                span[0].setAttribute('style', 'margin: auto;');
+                span[0].innerHTML = 'Descrição';
+
+                conteiner[0] = document.createElement('div');
+                conteiner[0].setAttribute('id', 'colunas');
+                conteiner[0].setAttribute('class', 'conteiner-colunas');
+                conteiner[0].setAttribute('style', 'width: 100%; height: 100%; max-width: 800px; display: flex;');
+
+                for(let c in columns){                    
+                    span[c + 1] = document.createElement('span');
+                    span[c + 1].setAttribute('style', 'margin: auto;');
+                    span[c + 1].innerHTML = 'Teste';
+
+                    coluna[c + 1] = document.createElement('div');
+                    coluna[c + 1].setAttribute('id', `coluna-${columns[c]}`);
+                    coluna[c + 1].setAttribute('class', 'coluna');
+                    coluna[c + 1].setAttribute('style', `width: ${100/numeroColunas}%; height: 100%; text-align: center; display: flex;`);
+
+                    coluna[c + 1].appendChild(span[c + 1]);
+                    conteiner[0].appendChild(coluna[c + 1]);
+                }
+                
+                //coluna[1].appendChild(span[1]);
+                //conteiner[0].appendChild(coluna[1]);
+
+                coluna[0].appendChild(span[0]);
+                linha.appendChild(coluna[0]);
+                linha.appendChild(conteiner[0]);
+                //linha.innerHTML = 'Teste';
+                table.appendChild(linha);
+
+
+
+                /*let domColumns = `
+                    <div id="descricao" style="width: 100%; height: 100%; max-width: 200px; display: flex;">
+                        <span style="margin: auto;">Descrição</span>
+                    </div>
+                    <div id="dados" style="width: 100%; height: 100%; max-width: 800px; display: flex;">
+                    `;
+                for (let k in columns){
+                    domColumns += `
+                        <div id="plano-${columns[k]}" style="width: 33%; height: 100%; text-align: center; display: flex;">
+                            <span style="margin: auto;">${columns[k]}</span>
+                        </div>`;
+                }
+                domColumns += `
+                    </div>`;
+                console.log(domColumns);
+                let domRow = `
+                    <div id="row" style="width: 100%; display: flex; height: 60px;">
+                        
+                        
+                            <div id="plano-a" style="width: 33%; height: 100%; text-align: center; display: flex;">
+                                <span style="margin: auto;">Plano A</span>
+                            </div>
+                            <div id="plano-b" style="width: 33%; height: 100%; margin: 0 auto; text-align: center; display: flex;">
+                                <span style="margin: auto;">Plano B</span>
+                            </div>
+                            <div id="plano-c" style="width: 33%; height: 100%; text-align: center; display: flex;">
+                                <span style="margin: auto;">Plano C</span>
+                            </div>
+                        </div>
+                    </div>`;*/
             }
             apiRequest();
         </script>
